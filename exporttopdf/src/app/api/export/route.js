@@ -11,7 +11,7 @@ export async function POST(request) {
     const html = await request.text();
 
     logs.push("Step 2: Getting executable path");
-    const executablePath = await chromium.executablePath; // <-- AQUÍ
+    const executablePath = await chromium.executablePath();
     logs.push(`Executable Path: ${executablePath}`);
 
     logs.push("Step 3: Launching Puppeteer browser");
