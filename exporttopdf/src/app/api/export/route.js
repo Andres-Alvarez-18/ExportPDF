@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chromium from "chrome-aws-lambda";
 
+// Logs globales para tener acceso a ellos en GET también
+let logs = [];
+
 export async function POST(request) {
   let browser;
-  let logs = [];  // Array para almacenar los logs
 
   try {
     logs.push("Step 1: Parsing the HTML request");
@@ -48,7 +50,7 @@ export async function POST(request) {
 
     logs.push("Step 9: Returning response");
 
-    // Incluir los logs en la respuesta
+    // Devolvemos el base64 y los logs en la respuesta
     return new NextResponse(
       JSON.stringify({ base64, logs }),
       {
@@ -69,11 +71,21 @@ export async function POST(request) {
       }
     }
 
-    // Incluir los logs y el error en la respuesta
     return NextResponse.json({
       error: "Error generating the PDF",
       details: err.message || err,
       logs,
     }, { status: 500 });
   }
+}
+
+// Método GET para obtener los logs
+export async function GET() {
+  return new NextResponse(
+    JSON.stringify({ logs }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }
