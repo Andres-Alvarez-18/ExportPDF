@@ -4,14 +4,14 @@ import chromium from "chrome-aws-lambda";
 
 export async function POST(request) {
   let browser;
-  let logs = []; 
+  let logs = [];
 
   try {
     logs.push("Step 1: Parsing the HTML request");
     const html = await request.text();
 
     logs.push("Step 2: Setting executable path");
-    const executablePath = await chromium.executablePath();
+    const executablePath = chromium.executablePath;
     logs.push(`Executable Path: ${executablePath}`);
 
     logs.push("Step 3: Launching Puppeteer browser");
