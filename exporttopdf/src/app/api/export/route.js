@@ -1,22 +1,26 @@
 import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
+import chromium from "chrome-aws-lambda"; // Agregar chrome-aws-lambda
 
 export async function POST(request) {
   let browser;
 
   try {
     const html = await request.text();
-    const executablePath = process.env.CHROME_PATH || puppeteer.executablePath();
+    const executablePath = chromium.executablePath || puppeteer.executablePath();
 
+    // Usamos chrome-aws-lambda para manejar el binario de Chrome adecuado
     browser = await puppeteer.launch({
       headless: true,
-      executablePath, 
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      executablePath,
+      args: chromium.args, // Usamos los argumentos específicos para chrome-aws-lambda
+      defaultViewport: chromium.defaultViewport,
     });
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
 
+    // Generamos el PDF
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -28,6 +32,7 @@ export async function POST(request) {
       },
     });
 
+    // Cerramos Puppeteer
     await browser.close();
 
     const base64 = pdfBuffer.toString("base64");
@@ -37,8 +42,9 @@ export async function POST(request) {
       headers: { "Content-Type": "text/plain" },
     });
   } catch (err) {
+    // Aquí vamos a capturar el error con detalles
     console.error("Error during PDF generation:", err);
-    
+
     if (browser) {
       try {
         await browser.close();
@@ -47,9 +53,9 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ 
-      error: "Error generating the PDF", 
-      details: err.message || err
+    return NextResponse.json({
+      error: "Error generating the PDF",
+      details: err.message || err,
     }, { status: 500 });
   }
 }
