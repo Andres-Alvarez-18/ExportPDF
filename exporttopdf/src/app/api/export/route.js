@@ -29,6 +29,7 @@ export async function POST(request) {
     });
 
     await browser.close();
+
     const base64 = pdfBuffer.toString("base64");
 
     return new NextResponse(base64, {
@@ -36,6 +37,8 @@ export async function POST(request) {
       headers: { "Content-Type": "text/plain" },
     });
   } catch (err) {
+    console.error("Error during PDF generation:", err);
+    
     if (browser) {
       try {
         await browser.close();
@@ -44,7 +47,9 @@ export async function POST(request) {
       }
     }
 
-    console.error("Error generating PDF:", err);
-    return NextResponse.json({ error: "Error generating the PDF" }, { status: 500 });
+    return NextResponse.json({ 
+      error: "Error generating the PDF", 
+      details: err.message || err
+    }, { status: 500 });
   }
 }
