@@ -1,57 +1,91 @@
 import { NextResponse } from "next/server";
+import puppeteer from "puppeteer-core";
+import chromium from "chrome-aws-lambda";
 
-const isProd = process.env.NODE_ENV === "production";
-
-let chromium, puppeteer;
-
-if (isProd) {
-  chromium = require("chrome-aws-lambda");
-  puppeteer = require("puppeteer-core");
-} else {
-  puppeteer = require("puppeteer");
-}
+// Logs globales para tener acceso a ellos en GET también
+let logs = [];
 
 export async function POST(request) {
   let browser;
-  const logs = [];
 
   try {
-    logs.push("Reading HTML");
+    logs.push("Step 1: Parsing the HTML request");
     const html = await request.text();
 
-    logs.push(`Launching browser (${isProd ? "production" : "dev"})`);
+    logs.push("Step 2: Setting executable path");
+    const executablePath = chromium.executablePath || puppeteer.executablePath();
+    logs.push(`Executable Path: ${executablePath}`);
 
-    browser = await (isProd
-      ? puppeteer.launch({
-          args: chromium.args,
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath,
-          headless: chromium.headless,
-        })
-      : puppeteer.launch({ headless: true }));
-
-    const page = await browser.newPage();
-    logs.push("Page created");
-
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    logs.push("HTML set");
-
-    const buffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: { top: "10mm", right: "10mm", bottom: "10mm", left: "10mm" },
+    logs.push("Step 3: Launching Puppeteer browser");
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath,
+      args: chromium.args, 
+      defaultViewport: chromium.defaultViewport,
     });
 
+    logs.push("Step 4: Creating new page");
+    const page = await browser.newPage();
+
+    logs.push("Step 5: Setting content to page");
+    await page.setContent(html, { waitUntil: "networkidle0" });
+
+    logs.push("Step 6: Generating PDF");
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "10mm",
+        right: "10mm",
+        bottom: "10mm",
+        left: "10mm",
+      },
+    });
+
+    logs.push("Step 7: Closing browser");
     await browser.close();
-    logs.push("PDF generated");
 
-    const base64 = buffer.toString("base64");
-    logs.push("PDF converted to base64");
+    logs.push("Step 8: Converting PDF to Base64");
+    const base64 = pdfBuffer.toString("base64");
 
-    return NextResponse.json({ base64, logs });
+    logs.push("Step 9: Returning response");
+
+    // Devolvemos el base64 y los logs en la respuesta
+    return new NextResponse(
+      JSON.stringify({ base64, logs }),
+      {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
   } catch (err) {
-    logs.push("ERROR: " + err.message);
-    if (browser) await browser.close();
-    return NextResponse.json({ error: err.message, logs }, { status: 500 });
+    logs.push("Error during PDF generation: " + err.message);
+
+    if (browser) {
+      try {
+        logs.push("Step 10: Closing browser due to error");
+        await browser.close();
+      } catch (closeErr) {
+        logs.push("Error closing browser: " + closeErr);
+      }
+    }
+
+    return NextResponse.json({
+      error: "Error generating the PDF",
+      details: err.message || err,
+      logs,
+    }, { status: 500 });
   }
+}
+
+// Método GET para obtener los logs
+export async function GET() {
+  return new NextResponse(
+    JSON.stringify({ logs }),
+    {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 }
