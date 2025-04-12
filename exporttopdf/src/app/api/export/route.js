@@ -10,8 +10,8 @@ export async function POST(request) {
     logs.push("Step 1: Parsing the HTML request");
     const html = await request.text();
 
-    logs.push("Step 2: Setting executable path");
-    const executablePath = chromium.executablePath;
+    logs.push("Step 2: Getting executable path");
+    const executablePath = await chromium.executablePath; // <-- AQUÍ
     logs.push(`Executable Path: ${executablePath}`);
 
     logs.push("Step 3: Launching Puppeteer browser");
