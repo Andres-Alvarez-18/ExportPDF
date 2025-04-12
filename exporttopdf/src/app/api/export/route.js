@@ -2,25 +2,23 @@ import { NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chromium from "chrome-aws-lambda";
 
-// Logs globales para tener acceso a ellos en GET también
-let logs = [];
-
 export async function POST(request) {
   let browser;
+  let logs = []; 
 
   try {
     logs.push("Step 1: Parsing the HTML request");
     const html = await request.text();
 
     logs.push("Step 2: Setting executable path");
-    const executablePath = chromium.executablePath || puppeteer.executablePath();
+    const executablePath = await chromium.executablePath();
     logs.push(`Executable Path: ${executablePath}`);
 
     logs.push("Step 3: Launching Puppeteer browser");
     browser = await puppeteer.launch({
       headless: true,
       executablePath,
-      args: chromium.args, 
+      args: chromium.args,
       defaultViewport: chromium.defaultViewport,
     });
 
@@ -50,7 +48,6 @@ export async function POST(request) {
 
     logs.push("Step 9: Returning response");
 
-    // Devolvemos el base64 y los logs en la respuesta
     return new NextResponse(
       JSON.stringify({ base64, logs }),
       {
@@ -77,15 +74,4 @@ export async function POST(request) {
       logs,
     }, { status: 500 });
   }
-}
-
-// Método GET para obtener los logs
-export async function GET() {
-  return new NextResponse(
-    JSON.stringify({ logs }),
-    {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }
-  );
 }
