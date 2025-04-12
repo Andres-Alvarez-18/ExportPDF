@@ -5,21 +5,24 @@ export async function POST(request) {
 
   try {
     const html = await request.text();
+    let puppeteer;
+    let chromium;
+
     if (process.env.AWS_REGION || process.env.VERCEL) {
-      const chromium = await import('chrome-aws-lambda');
-      const puppeteer = await import('puppeteer-core');
+      chromium = await import('chrome-aws-lambda');
+      puppeteer = await import('puppeteer-core');
 
       browser = await puppeteer.default.launch({
         args: chromium.args,
         defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath,
+        executablePath: await chromium.executablePath || '/usr/bin/chromium-browser',
         headless: true,
       });
     } else {
-      const puppeteer = await import('puppeteer');
-      
+      puppeteer = await import('puppeteer');
+
       browser = await puppeteer.default.launch({
-        headless: "new",
+        headless: true,
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
       });
     }
