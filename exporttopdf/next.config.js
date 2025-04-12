@@ -5,15 +5,10 @@ const nextConfig = {
         test: /\.map$/,
         use: 'ignore-loader',
       });
-  
-      if (!isServer) {
-        config.externals.push({
-          'chrome-aws-lambda': 'commonjs chrome-aws-lambda',
-        });
-      }
-  
+
       return config;
     },
   };
   
   module.exports = nextConfig;
+  

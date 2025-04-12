@@ -1,31 +1,18 @@
 import { NextResponse } from "next/server";
+import puppeteer from "puppeteer-core";
 
 export async function POST(request) {
   let browser;
 
   try {
     const html = await request.text();
-    let puppeteer;
-    let chromium;
+    const executablePath = process.env.CHROME_PATH || puppeteer.executablePath();
 
-    if (process.env.AWS_REGION || process.env.VERCEL) {
-      chromium = await import('chrome-aws-lambda');
-      puppeteer = await import('puppeteer-core');
-
-      browser = await puppeteer.default.launch({
-        args: chromium.args,
-        defaultViewport: chromium.defaultViewport,
-        executablePath: await chromium.executablePath || '/usr/bin/chromium-browser',
-        headless: true,
-      });
-    } else {
-      puppeteer = await import('puppeteer');
-
-      browser = await puppeteer.default.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      });
-    }
+    browser = await puppeteer.launch({
+      headless: true,
+      executablePath, 
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    });
 
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0" });
@@ -34,17 +21,17 @@ export async function POST(request) {
       format: "A4",
       printBackground: true,
       margin: {
-        top: "5mm",
-        right: "5mm",
-        bottom: "5mm",
-        left: "5mm",
+        top: "10mm",
+        right: "10mm",
+        bottom: "10mm",
+        left: "10mm",
       },
     });
 
     await browser.close();
     const base64 = pdfBuffer.toString("base64");
 
-    return new Response(base64, {
+    return new NextResponse(base64, {
       status: 200,
       headers: { "Content-Type": "text/plain" },
     });
