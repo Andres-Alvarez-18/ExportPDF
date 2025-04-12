@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import puppeteer from "puppeteer-core";
 import chromium from "chrome-aws-lambda";
 
 export async function POST(request) {
@@ -10,25 +9,21 @@ export async function POST(request) {
     logs.push("Step 1: Parsing the HTML request");
     const html = await request.text();
 
-    logs.push("Step 2: Getting executable path");
-    const executablePath = await chromium.executablePath();
-    logs.push(`Executable Path: ${executablePath}`);
-
-    logs.push("Step 3: Launching Puppeteer browser");
-    browser = await puppeteer.launch({
-      headless: true,
-      executablePath,
+    logs.push("Step 2: Launching Chromium");
+    browser = await chromium.puppeteer.launch({
       args: chromium.args,
       defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
 
-    logs.push("Step 4: Creating new page");
+    logs.push("Step 3: Creating new page");
     const page = await browser.newPage();
 
-    logs.push("Step 5: Setting content to page");
+    logs.push("Step 4: Setting content to page");
     await page.setContent(html, { waitUntil: "networkidle0" });
 
-    logs.push("Step 6: Generating PDF");
+    logs.push("Step 5: Generating PDF");
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -40,13 +35,13 @@ export async function POST(request) {
       },
     });
 
-    logs.push("Step 7: Closing browser");
+    logs.push("Step 6: Closing browser");
     await browser.close();
 
-    logs.push("Step 8: Converting PDF to Base64");
+    logs.push("Step 7: Converting PDF to Base64");
     const base64 = pdfBuffer.toString("base64");
 
-    logs.push("Step 9: Returning response");
+    logs.push("Step 8: Returning response");
 
     return new NextResponse(
       JSON.stringify({ base64, logs }),
@@ -61,7 +56,7 @@ export async function POST(request) {
 
     if (browser) {
       try {
-        logs.push("Step 10: Closing browser due to error");
+        logs.push("Step 9: Closing browser due to error");
         await browser.close();
       } catch (closeErr) {
         logs.push("Error closing browser: " + closeErr);
